@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <link rel="shortcut icon" href="../img/icon/lenglian.ico">
+  <link rel="stylesheet" href="../css/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="../publicJS/jquery-2.1.0.js"></script>
+  <script src="../publicJS/bootstrap.min.js"></script>
+  <script src="../publicJS/reqDomain.js"></script>
+  <script src="js/function.js"></script>
+  <script src="js/assembly.js"></script>
+  <style>
+    /* 页面效果 */
+    #main{background: white;}
+    .assistance .msglist {width: 13.4%;min-height: 120px;background: white;border-radius: 5px;float: left;min-width: 214px;padding-top: 10px;}
+		.assistance .magess_list {color: #1199D3;font-size: 1.1em;height: 100%;border: 1px solid rgba(0,0,0,0.1);line-height: 20px;border-radius: 10px;line-height: 25px;padding: 15px 0;display: block!important;}
+		.magess_list div{text-indent: 10px;cursor: pointer;}
+		.assis_con {width: 50%;float: left;padding: 15px;}
+		.assis_title {font-size: 1.4em;color: #1199D3;}
+		.assis_detail {margin-top: 10px;}
+		.assistance{margin-bottom: 60px;}
+  </style>
+</head>
+<body>
+  <div id="header"></div>
+  <div id="nav"></div>
+  <div id="main">
+    <!-- 面包屑 -->
+    <div id="sidebar">
+      <img src="../img/nac.png" />
+      <a id="home" href="cold.html">首页</a>>
+      <a href="javascript:void(0)">帮助</a>
+    </div>
+    <!-- 帮助手册 -->
+    <div class="assistance">
+      <div class="msglist">
+        <div class="magess_list" id="manual_list"></div>
+      </div>
+      <div class="assis_con">
+        <div class="assis_title" id="manual_info_title"></div>
+        <div class="assis_detail" id="manual_info_content"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    $(function(){
+    	$('#home').prop('href',window.localStorage.getItem('homePage')+'.html')
+      // 初始化头部
+      new Header('#header');
+      // 初始化导航
+      new Nav('#nav',9);
+      // 获取帮助列表
+      getManList();
+    })
+  </script>
+  <script>
+    // 获取帮助列表
+    function getManList(){
+      $.ajax({
+        type: 'POST',
+        url: reqDomain + "/manual/manual_list",
+        data: {},
+        dataType: "json",
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function(data) {
+          if(data.code == 200) {
+            var html = "";
+            for(var i = 0; i < data.result.length; i++) {
+              html += "<div onclick='manual_info(" + data.result[i].id + ")'>" + parseInt(i + 1) + "." + data.result[i].title + "</div>"
+            }
+            $("#manual_list").html(html);
+          } else if(data.code == 401) {
+            window.location.href = "../login.html";
+          } else if(data.code == 400) {
+            alert(data.reason);
+          }
+        }
+      });
+    }
+    //获取文档信息
+    function manual_info(id) {
+      $.ajax({
+        async: false,
+        cache: false,
+        type: 'POST',
+        url: reqDomain + "/manual/manual_info", 
+        data: {
+          "id": id
+        },
+        dataType: "json",
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function(data) {
+          if(data.code == 200) {
+            $("#manual_info_title").html(data.result.title);
+            $("#manual_info_content").html(data.result.content);
+          } else if(data.code == 401) {
+            window.location.href = "../login.html";
+          } else if(data.code == 400) {
+            alert(data.reason);
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

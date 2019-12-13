@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <link rel="shortcut icon" href="../img/icon/lenglian.ico">
+  <link rel="stylesheet" href="../css/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/bootstrap-table.css">
+  <link rel="stylesheet" href="../css/bootstrap-multiselect.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="../publicJS/jquery-2.1.0.js"></script>
+  <script src="../publicJS/bootstrap.min.js"></script>
+  <script src="../publicJS/bootstrap-table.js"></script>
+  <script src="../publicJS/tableExport.min.js"></script>
+  <script src="../publicJS/bootstrap-table-export.min.js"></script>
+  <script src="../publicJS/bootstrap-multiselect.min.js"></script>
+  <script src="../publicJS/reqDomain.js"></script>
+  <script src="../plugs/layer/layer.js"></script>
+  <script src="../plugs/date/WdatePicker.js"></script>
+  <script src="js/function.js"></script>
+  <script src="js/assembly.js"></script>
+  <style>
+    /* 页面效果 */
+    #main{background: white;}
+    .indexTable{position: relative;margin-top: 20px;}
+    .indexTable .columns.columns-right.btn-group.pull-right{position: absolute;top: -67px;right: 0;}
+    .indexTable table th{height: 24px;background-color: #1199D3;}
+    .indexTable table th .th-inner{padding: 0;color: white;font-size: 14px;}
+    .indexTable table td{font-size: 14px;}
+    .indexTable table tr{cursor: pointer;}
+    .indexTable table tr.bg td{background-color: #BBBBBB;}
+    /* 弹框效果 */
+    .mask>div{width: 800px;height: 300px;position: absolute;top: 50%;left: 50%;margin: -150px 0 0 -400px;background-color: #fff;border: 1px solid #45C5F8;border-radius: 10px;}
+    .mask_table{width: 370px;margin: 35px auto;}
+    .mask_table td{text-align: right;font-size: 14px;}
+    .mask_table td>.form-control{border: 1px solid #D9D9D9;padding: 2px 8px;margin: 5px 0 5px 20px;width: 200px;resize: none;}
+    .mask_table td>input{height: 25px;}
+    .mask_table td>select{width: 200px;}
+    .mask .addTravel{height:400px;margin: -200px 0 0 -400px;}
+    #box_list+div{float: left;margin-left: 20px}
+    .mask .maintain{width: 1000px;height: 460px;margin: -230px 0 0 -500px;}
+    .maintain div[class^='ma_']{float: left;height: 370px;}
+    .ma_left, .ma_right {width: 266px;}
+    .ma_left {margin-left: 80px;}
+    .ma_center {width: 90px;position: relative;height: 270px;}
+    .ma_center>i{position: absolute;left: 30px;cursor: pointer;width: 30px;text-align: center;height: 30px;line-height: 30px;border-radius: 50%;border: 1px solid #aaa;color: #aaa;}
+    .ma_center>i:hover{border: 1px solid #45C5F8;color: #45C5F8;}
+    .ma_center>i:first-child {top: 170px;}
+    .ma_center>i:last-child {position: absolute;bottom: 90px;top: auto;}
+    .ma_left>div, .ma_right>div {color: #2C2C2C;font-weight: bold;font-size: 14px;text-align: center;margin: 25px 0;}
+    .squear {width: 100%;height: 300px!important;margin-bottom: 35px;border: 1px solid #87DAFB;box-shadow: 1px 1px 10px rgba(135,218,251,0.5);display: block;}
+    .squear option {text-align: center;}
+    .maintain>.mask_main{display: block;width: 1000px;}
+    .maintain .ma_right{width: 500px;height: 500px;}
+    .pull-right.search{margin-top: 0;}
+    .maintain .ma_right table th{text-align: center;height: 24px;background-color: #1199D3;}
+    .maintain .ma_right table th .th-inner{padding: 0!important;color: white;font-size: 14px;}
+    .maintain .ma_right table td{text-align: center;font-size: 14px;padding: 0!important;font-weight: normal;}
+    .maintain .ma_right table tr{cursor: pointer;}
+    .maintain .ma_right table tr.bg td{background-color: #BBBBBB;}
+    .myform_button{padding-top: 15px;}
+  </style>
+</head>
+<body>
+  <div id="header"></div>
+  <div id="nav"></div>
+  <div id="main">
+    <!-- 面包屑 -->
+    <div id="sidebar">
+      <img src="../img/nac.png" />
+      <a id="home" href="cold.html">首页</a>>
+      <a href="javascript:void(0)">行程</a>>
+      <a href="javascript:void(0)">行程列表</a>
+    </div>
+     <!-- 操作组 -->
+     <div id="operationGroup">
+      <span class="op_btn" onclick="addTravel()">添加</span>
+      <span class="op_btn" onclick="changeTravel()">修改</span>
+      <span class="op_btn" onclick="maintainTravel()">行程设备维护</span>
+      <span class="op_btn" onclick="deleteTravel()">删除</span>	
+      <select id="travel_status">
+        <option value="">全部状态</option>
+        <option value="0">未开始</option>
+        <option value="1">进行中</option>
+        <option value="2">已结束</option>
+      </select>
+      <div class="op_search">
+        <img src="../img/search.png" />
+        <input type="text" placeholder="输入关键字" id="keyword" />
+        <button onclick="travel_list()">查询</button>
+      </div>
+    </div>
+    <!-- 表格 -->
+    <div class="indexTable">
+      <table id="indexTable" data-toggle="table"></table>
+    </div>
+    <!-- 弹框 -->
+    <div class="mask"></div>
+  </div>
+  <script>
+     $(function(){
+     	$('#home').prop('href',window.localStorage.getItem('homePage')+'.html')
+      // 页面初始化
+      pageInit();
+      // 初始化头部
+      new Header('#header');
+      // 初始化导航
+      new Nav('#nav',4);
+      // 行程表格
+      travel_list();
+      // 设备列表
+      box_list();
+    })
+  </script>
+  <script>
+    var tableRow = null;
+    var boxList = null;
+    // 页面初始化
+    function pageInit(){
+      tableRow = null;
+    }
+    //行程表格
+    function travel_list(){
+      $.ajax({
+        type : 'POST',
+        url : reqDomain + "/travel/travel_list",
+        data: {},
+        dataType:"json",
+        data: {
+          "keyword": $('#keyword').val(),
+          "status": $('#travel_status').val()
+        },
+        xhrFields:{
+          withCredentials: true
+        },
+        success:function(data){
+          if(data.code == 200){
+            $("#indexTable").bootstrapTable("load",data.result);
+          }else if(data.code == 401) {
+            window.location.href = "../login.html";
+          } else if(data.code == 400) {
+            alert(data.reason);
+          }
+        }				
+      });
+    }
+    //行程表格
+    $('#indexTable').bootstrapTable({
+      sortable:true,
+      height:600,
+      sortOrder:'id desc',
+      clickToSelect: true,
+      showExport: true,
+      exportDataType: 'all',
+      columns:[
+        {
+          title:'序号',
+          formatter: function(value, row, index) {
+            return index + 1;
+          },
+          width:'10%',
+          align: 'center',
+        },
+        {
+          title:'状态',
+          align: 'center',
+          formatter: function(value, row, index) {
+            if(row.status == '0') {
+              return "未开始";
+            } else if(row.status == '1') {
+              return "进行中";
+            } else if(row.status == '2') {
+              return "已经结束";
+            }
+          }
+        },
+        {
+          title:'名称',
+          field:'title',
+          align: 'center',
+        },
+        {
+          title:'设备数量',
+          field:'box_num',
+          width:'15%',
+          align: 'center',
+        },
+        {
+          title:'开始时间',
+          align: 'center',
+          field:'start_time',
+          formatter: function(value){
+            return formatTime(value);
+          }
+        },
+        {
+          title:'结束时间',
+          align: 'center',
+          field:'end_time',
+          formatter: function(value){
+            return formatTime(value);
+          }
+        },
+        {
+          title:'货物',
+          align: 'center',
+          field:'goods'
+        }
+      ]
+    });
+    // 点击表格行
+    $("#indexTable").on('click-row.bs.table', function(e, row, element) {
+      $(element).addClass('bg').siblings().removeClass('bg');
+      tableRow = row;
+    })
+    // 设备列表
+    function box_list(){
+      $.ajax({
+        async: false,
+        cache: false,
+        type: 'POST',
+        url: reqDomain + "/device/box_list",
+        data: {},
+        dataType: "json",
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function(data) {
+          if(data.code == 200) {
+						boxList = data.result;
+          } else if(data.code == 401) {
+            window.location.href = "../login.html";
+          } else if(data.code == 400) {
+            alert(data.reason);
+          }
+        }
+      });
+    }
+    // 添加行程
+    function addTravel(){
+      $('.mask').show();
+      new AddTravel();
+    }
+    function AddTravel(){
+      this.init();
+    }
+    AddTravel.prototype.init = function(){
+      var div = document.createElement('div');
+      div.className = 'addTravel';
+      var str = '<div class="mask_title">添加行程<span class="close" onclick="closeMask()">×</span></div>';
+      str += '<div class="mask_main"><table class="mask_table"><tr><td>行程名称</td><td><input type="text" class="form-control" id="travel_title" /></td></tr>';
+      str += '<tr><td>状态</td><td><select class="form-control" id="travel_status_add">		<option value="0">未开始</option><option value="1">进行中</option><option value="2">已经结束</option></select></td></tr>';
+      str += '<tr><td>运送货物</td><td><input type="text" class="form-control" id="travel_goods" /></td></tr>'
+      str += '<tr><td>开始时间</td><td><input type="text" id="travel_startTime" name="starttime" class="form-control Wdate" placeholder="请选择开始时间" autocomplete="off"/></td></tr>';
+      str += '<tr><td>结束时间</td><td><input type="text" id="travel_endTime" name="endtime" class="form-control Wdate" placeholder="请选择开始时间" autocomplete="off"/></td></tr>';
+      str += '<tr><td>行程设备</td><td><select id="box_list" name="tagId" multiple></select></td></tr>';
+      str += '<tr><td>说明：</td><td><input type="text" class="form-control" id="travel_remarks" /></td></tr></table><div class="myform_button"><button type="button" class="btn btn-info" onclick="travelAdd()">保存</button> </div></div>';
+      div.innerHTML = str;
+      document.getElementsByClassName('mask')[0].appendChild(div);  
+      $("#travel_startTime").click(function () {
+        WdatePicker({
+            lang: 'auto',
+            dateFmt: 'yyyy-MM-dd HH:mm:ss',
+            maxDate: '#F{$dp.$D(\'travel_endTime\')}',
+        })
+      })
+      $("#travel_endTime").click(function () {
+        WdatePicker({
+            lang: 'auto',
+            dateFmt: 'yyyy-MM-dd HH:mm:ss',
+            minDate: '#F{$dp.$D(\'travel_startTime\')}',
+        })
+      }) 
+      $('#box_list').empty();
+      for(var i=0;i<boxList.length;i++){
+        $('#box_list').append('<option value="'+boxList[i].box_id+'">'+boxList[i].name+'</option>')
+      }
+      $('#box_list').multiselect('destroy').multiselect({
+        buttonWidth: '150px',
+        enableCollapsibleOptGroups: true,
+        selectAllText: '全选',
+        filterPlaceholder: '搜索',
+        includeSelectAllOption: true,
+        enableFiltering: true,
+        nonSelectedText: '最少选一个设备',
+        numberDisplayed: 2,
+        maxHeight: 300,
+      });
+    }
+    function travelAdd(){
+      $.ajax({
+        async: false,
+        cache: false,
+        type: 'POST',
+        url: reqDomain + "/travel/travel_save", 
+        data: {
+          "status": $('#travel_status_add').val(),
+          "title": $('#travel_title').val(),
+          "startTime": $('#travel_startTime').val(),
+          "endTime": $('#travel_endTime').val(),
+          "goods": $('#travel_goods').val(),
+          "remarks": $('#travel_remarks').val(),
+          "boxIDs": $('#box_list').val()
+        },
+        dataType: "json",
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function(data) {
+          console.log(data)
+          if(data.code == 200) {
+            layer.alert("添加成功!");
+            travel_list();
+            closeMask();
+          } else if(data.code == 401) {
+            window.location.href = "../login.html";
+          } else if(data.code == 400) {
+            layer.alert(data.reason);
+          }
+        }
+      });
+    }
+    // 修改行程
+    function changeTravel(){
+      if(tableRow == null){
+        layer.alert('请选择一个行程!');
+        return false;
+      }
+      $('.mask').show();
+      new ChangeTravel();
+    }
+    function ChangeTravel(){
+      this.init();
+    }
+    ChangeTravel.prototype.init = function(){
+      var div = document.createElement('div');
+      div.className = 'addTravel';
+      var str = '<div class="mask_title">添加行程<span class="close" onclick="closeMask()">×</span></div>';
+      str += '<div class="mask_main"><table class="mask_table"><tr><td>行程名称</td><td><input type="text" class="form-control" id="travel_title" /><input type="hidden" value="" id="travle_id"/></td></tr>';
+      str += '<tr><td>状态</td><td><select class="form-control" id="travel_status_change">		<option value="0">未开始</option><option value="1">进行中</option><option value="2">已经结束</option></select></td></tr>';
+      str += '<tr><td>运送货物</td><td><input type="text" class="form-control" id="travel_goods" /></td></tr>'
+      str += '<tr><td>开始时间</td><td><input type="text" id="travel_startTime" name="starttime" class="form-control Wdate" placeholder="请选择开始时间" autocomplete="off"/></td></tr>';
+      str += '<tr><td>结束时间</td><td><input type="text" id="travel_endTime" name="endtime" class="form-control Wdate" placeholder="请选择开始时间" autocomplete="off"/></td></tr>';
+      str += '</table><div class="myform_button"><button type="button" class="btn btn-info" onclick="travelChange()">保存</button> </div></div>';
+      div.innerHTML = str;
+      document.getElementsByClassName('mask')[0].appendChild(div);  
+      $("#travel_startTime").click(function () {
+        WdatePicker({
+            lang: 'auto',
+            dateFmt: 'yyyy-MM-dd HH:mm:ss',
+            maxDate: '#F{$dp.$D(\'travel_endTime\')}',
+        })
+      })
+      $("#travel_endTime").click(function () {
+        WdatePicker({
+            lang: 'auto',
+            dateFmt: 'yyyy-MM-dd HH:mm:ss',
+            minDate: '#F{$dp.$D(\'travel_startTime\')}',
+        })
+      })
+      $('#travel_title').val(tableRow.title);
+      $('#travle_id').val(tableRow.id);
+      $('#travel_status_change').val(tableRow.status);
+      $('#travel_goods').val(tableRow.goods);
+      $('#travel_startTime').val(formatTime(tableRow.start_time));
+      $('#travel_endTime').val(formatTime(tableRow.end_time));
+    }
+    function travelChange(){
+      $.ajax({
+        async: false,
+        cache: false,
+        type: 'POST',
+        url: reqDomain + "/travel/travel_save", 
+        data: {
+          "id": $('#travle_id').val(),
+          "status": $('#travel_status_change').val(),
+          "title": $('#travel_title').val(),
+          "startTime": $('#travel_startTime').val(),
+          "endTime": $('#travel_endTime').val(),
+          "goods": $('#travel_goods').val(),
+        },
+        dataType: "json",
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function(data) {
+          console.log(data)
+          if(data.code == 200) {
+            tableRow = null;
+            layer.alert("修改成功!");
+            travel_list();
+            closeMask();
+          } else if(data.code == 401) {
+            window.location.href = "../login.html";
+          } else if(data.code == 400) {
+            layer.alert(data.reason);
+          }
+        }
+      });
+    }
+    // 行程设备维护
+    function maintainTravel(){
+      if(tableRow == null){
+        layer.alert('请选择一个行程！');
+        return false;
+      }
+      $('.mask').show();
+      new MaintainTravel();
+    }
+    function MaintainTravel(){
+      this.init();
+    }
+    MaintainTravel.prototype.init = function(){
+      var div = document.createElement('div');
+      div.className = 'maintain';
+      var str = '<div class="mask_title">行程设备维护：<span id="travel_title"></span><span class="close" onclick="closeMask()">×</span></div>';
+      str += '<div class="mask_main"><div class="ma_left"><div>已有设备：</div><select class="squear" name="" id="travel_box_list" multiple="multiple"></select></div>';
+      str += '<div class="ma_center"><i class="img_right glyphicon glyphicon-menu-right" onclick="toRight()"/></i><i class="img_left glyphicon glyphicon-menu-left" onclick="toLeft()"></i></div>';
+      str += '<div class="ma_right"><div>添加以下设备到行程：</div><table id="boxTable"></table></div>';
+      str += '<div class="myform_button"><button type="button" id="group_box_save" class="btn btn-info" onclick="maintainSave()">保存</button></div></div>';
+      div.innerHTML = str;
+      document.getElementsByClassName('mask')[0].appendChild(div);
+      travel_box_list(); 
+    }
+    // 行程已有设备列表
+    function travel_box_list(){
+      var travel_boxs = [];
+      var travel_boxs_o = boxList.slice();
+      $.ajax({
+        async: false,
+        cache: false,
+        type: 'POST',
+        url: reqDomain + "/travel/travel_info", 
+        data: {
+          "travelID": tableRow.id
+        },
+        dataType: "json",
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function(data) {
+          if(data.code == 200) {
+            travel_boxs = data.result.boxs;
+            travel_boxs.sort(up);
+            for(var i=0;i<travel_boxs.length;i++){
+              for(var j=0;j<travel_boxs_o.length;j++){
+                if(travel_boxs[i].box_id == travel_boxs_o[j].box_id){
+                  travel_boxs_o.splice(j, 1);
+                }
+              }
+            }
+            $('#travel_box_list').empty();
+            if(travel_boxs != []){
+              for(var i=0;i<travel_boxs.length;i++){
+                $('#travel_box_list').append('<option value="'+travel_boxs[i].box_id+'">'+travel_boxs[i].name+'</option>');
+              }
+            }
+            $('#boxTable').bootstrapTable('removeAll')
+            $('#boxTable').bootstrapTable({
+              height:300,
+              sortOrder: 'id desc',
+              search:true,
+              clickToSelect: true,
+              columns: [
+                {
+                  checkbox:true,
+                  field: 'checked',
+                },
+                {
+                  field: 'name',
+                  title: '箱号',
+                  align: 'center',
+                  valign: 'middle'
+                },{
+                  field: 'box_id',
+                  title: 'ID',
+                  align: 'center',
+                  valign: 'middle'
+                },{
+                  field: 'gorup_name',
+                  title: '所在分组',
+                  align: 'center',
+                  valign: 'middle',
+                  sortable:true
+                }
+              ]
+            })
+            $('#boxTable').bootstrapTable('load',travel_boxs_o);
+          } else if(data.code == 401) {
+            window.location.href = "../login.html";
+          } else if(data.code == 400) {
+            layer.alert(data.reason);
+          }
+        }
+      })
+    }
+    //分组设备添加删除
+    function toLeft(){
+      var data = null;
+      data = $('#boxTable').bootstrapTable('getSelections');
+      var box_ids = [];
+      if(data.length){
+        for(var i=0;i<data.length;i++){
+          $("#travel_box_list").append('<option value="'+data[i].box_id+'">'+data[i].name+'</option>');
+          box_ids.push(data[i].box_id);
+        }
+        $('#boxTable').bootstrapTable('remove',{field: 'box_id', values: box_ids})
+      }
+    }
+    function toRight(){
+      var right = $('#travel_box_list option:selected');
+      if(right.length){					
+        for(var i=0;i<right.length;i++){
+          var rigthName = right[i].innerHTML;
+          var rightVal = right[i].value;
+          var data = {
+            name:rigthName,
+            box_id:rightVal
+          }
+          $('#boxTable').bootstrapTable('append',data)
+        }
+      }
+      right.remove();
+    }
+    // 行程设备维护保存
+    function maintainSave(){
+      var boxIDs = [];
+      var list = $('#travel_box_list').find('option');
+      for(var i = 0; i < list.length; i++) {
+        boxIDs.push(list.eq(i).val());
+      }
+      $.ajax({
+        async: false,
+        cache: false,
+        type: 'POST',
+        url: reqDomain + "/travel/travel_box_save", 
+        data: {
+          "travelID": tableRow.id,
+          "boxIDs": boxIDs
+        },
+        dataType: "json",
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function(data) {
+          if(data.code == 200) {
+            tableRow = null;
+            layer.alert("保存成功");
+            closeMask();
+            travel_list();
+          } else if(data.code == 401) {
+            window.location.href = "../login.html";
+          } else if(data.code == 400) {
+            layer.alert(data.reason);
+          }
+        }
+      });
+    }
+    // 删除行程
+    function deleteTravel(){
+      if(tableRow == null){
+        layer.alert('请选择一个行程！');
+        return false;
+      }
+      layer.confirm('确定要删除该行程吗？',function(){
+        $.ajax({
+          async: false,
+          cache: false,
+          type: 'POST',
+          url: reqDomain + "/travel/travel_delete", 
+          data: {
+            "travelID": tableRow.id
+          },
+          dataType: "json",
+          xhrFields: {
+            withCredentials: true
+          },
+          success: function(data) {
+            console.log(data)
+            if(data.code == 200) {
+              layer.alert("删除成功!");
+              tableRow = null;
+              travel_list();
+              closeMask();
+            } else if(data.code == 401) {
+              window.location.href = "../login.html";
+            } else if(data.code == 400) {
+              layer.alert(data.reason);
+            }
+          }
+        });
+      })
+    }
+    // 点击叉号
+    function closeMask(){
+      $('.mask').fadeOut(300);
+      $('.mask>div').remove();
+    }
+    //时间格式转换
+    function formatTime(date) {
+      if(date == 0){
+        return '-';
+      }
+      var date = new Date(date * 1000);
+      var year = date.getFullYear()
+      var month = date.getMonth() + 1
+      var day = date.getDate()
+      var hour = date.getHours()
+      var minute = date.getMinutes()
+      var second = date.getSeconds()
+      return [year, month, day].map(formatNumber).join('-') +' ' + [hour, minute, second].map(formatNumber).join(':')
+    }
+    // 排序
+    function up(x,y){
+      return x.name.substr(x.name.length-7)-y.name.substr(y.name.length-7);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+.idea
+composer.lock
+*.log
+
+application/database.php
+application/database.php
+application/database.php
+public/login.html
+public/publicJS/reqDomain.js

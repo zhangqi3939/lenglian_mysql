@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <link rel="shortcut icon" href="../img/icon/lenglian.ico">
+  <link rel="stylesheet" href="../css/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/bootstrap-table.css">
+  <link rel="stylesheet" href="../css/bootstrap-multiselect.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="../publicJS/jquery-2.1.0.js"></script>
+  <script src="../publicJS/bootstrap.min.js"></script>
+  <script src="../publicJS/bootstrap-table.js"></script>
+  <script src="../publicJS/bootstrap-multiselect.min.js"></script>
+  <script src="../publicJS/tableExport.min.js"></script>
+  <script src="../publicJS/bootstrap-table-export.min.js"></script>
+  <script src="../publicJS/echarts.js"></script>
+  <script src="../publicJS/reqDomain.js"></script>
+  <script src="../plugs/date/WdatePicker.js"></script>
+  <script src="../plugs/layer/layer.js"></script>
+  <script src="js/function.js"></script>
+  <script src="js/assembly.js"></script>
+  <style>
+    /* 页面效果 */
+    #main{background: white;}
+    #equi_list{width: 150px;height: 40px;}
+    .indexTable{position: relative;margin-top: 20px;}
+    .indexTable table th{height: 24px;background-color: #1199D3;}
+    .indexTable table th .th-inner{padding: 0;color: white;font-size: 14px;text-align: center;}
+    .indexTable table td{font-size: 14px;padding: 0!important;text-align: center;}
+    .indexTable table tr{cursor: pointer;}
+    .indexTable table tr.bg td{background-color: #BBBBBB;}
+    .pull-left.pagination-detail{display: none;}
+  </style>
+</head>
+<body>
+  <div id="header"></div>
+  <div id="nav"></div>
+  <div id="main">
+    <!-- 面包屑 -->
+    <div id="sidebar">
+      <img src="../img/nac.png" />
+      <a id="home" href="cold.html">首页</a>>
+      <a href="javascript:void(0)">记录</a>>
+      <a href="javascript:void(0)">设备数据</a>
+    </div>
+    <!-- 操作组 -->
+    <div id="operationGroup">
+      <select class="op_sel" id="equi_list"></select>
+      <b>起止时间：</b>
+      <input type="text" id="startTime" class="op_input" onfocus="WdatePicker({ dateFmt:'yyyy-MM-dd HH:mm'})" placeholder="请选择开始时间" autocomplete="off">
+      <b>--</b>
+      <input type="text" id="endTime" class="op_input Wdate" onfocus="WdatePicker({dateFmt:'yyyy-MM-dd HH:mm',minDate:'#F{$dp.$D(\'startTime\')}'});" placeholder="请选择结束时间" autocomplete="off">
+      <span class="op_btn" onclick="search()" style="color:#1199D3;">查询</span>	
+    </div>
+    <!-- 折线图 -->
+    <div class="chart_equi" id="chart_equi" style="width: 100%;height: 300px;"></div>
+    <!-- 表格 -->
+    <div class="indexTable" id="scroll-1" style="margin-bottom: 10px;">
+      <table id="indexTable"></table>
+    </div>
+  </div>
+  <script>
+    $(function(){
+    	$('#home').prop('href',window.localStorage.getItem('homePage')+'.html')
+      // 初始化头部
+      new Header('#header');
+      // 初始化导航
+      new Nav('#nav',6);
+      // 设备列表
+      equi_list();
+    })
+  </script>
+  <script>
+    // 设备下拉列表
+    function equi_list(){
+      $.ajax({
+        async: false,
+        cache: false,
+        type: 'POST',
+        url: reqDomain + "/device/box_list", // 请求的action路径
+        dataType: "json",
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function(data) {
+          if(data.code == 200) {
+            var boxhtml = "";
+            for(var i = 0; i < data.result.length; i++) {
+              if(data.result[i].name == null) {
+                data.result[i].name = data.result[i].box_id;
+              }
+              boxhtml += "<option value='" + data.result[i].box_id + "'>" + data.result[i].name +'（'+data.result[i].box_id+ "）</option>";
+            };
+            $("#equi_list").html(boxhtml);
+            $("#equi_list").multiselect({
+              filterPlaceholder: '搜索',
+              buttonWidth: '200px',
+              selectAllText: '全选',
+              filterPlaceholder: '搜索',
+              includeSelectAllOption: true,
+              enableFiltering: true,
+              maxHeight: 400,
+            });
+          } else if(data.code == 401) {
+            window.location.href = "../login.html";
+          } else if(data.code == 400) {
+            alert(data.reason);
+          }
+        }
+      });
+    }
+    $('#indexTable').bootstrapTable({
+				pagination: true, //是否显示分页（*）
+				sortable: true, //是否启用排序
+				sidePagination: "client", //分页方式：client客户端分页，server服务端分页（*）
+				pageNumber:1, //初始化加载第一页，默认第一页
+				pageSize: 10, //每页的记录行数（*）
+				pageList: [10, 20, 50, 100], //可供选择的每页的行数（*）
+				strictSearch: true,
+				search: true,
+				showExport: true,
+				exportDataType:'all',
+				showColumns:true,
+				columns:[
+					{field:'id',title:'序号',formatter:function(value,row,index){return ++index;}},
+					{field:'name',title:'名称',formatter:function(){return $("#sel_productTag").find("option:selected").text();}},
+					{field:'box_id',title:'设备编号'},
+					{field:'gps_humi',title:'湿度',formatter:function(value){return dealDataValue(value, "humi");}},
+					{field:'gps_temp1',title:'箱外温度',formatter:function(value){return dealDataValue(value, "temp");}},
+					{field:'gps_temp2',title:'箱内中部温度',formatter:function(value){return dealDataValue(value, "temp");}},
+					{field:'gps_temp3',title:'箱内后部温度',formatter:function(value){return dealDataValue(value, "temp");}},
+					{field:'gps_voltage',title:'电压',formatter:function(value){return dealDataValue(value, "voltage");}},
+					{field:'cooler_off_flag',title:'主机通讯',formatter:function(value){return dealDataValue(value, "cooler_off_flag");}},
+					{title:'故障码',field:'str'},
+					{field:'cooler_set_temp',title:'设置温度',formatter:function(value){return F2C(dealDataValue(value, "temp"));}},
+					{field:'ambient_temp',title:'环境温度',formatter:function(value){return F2C(dealDataValue(value, "ambient_temp"));}},
+					{field:'re_air_temp',title:'回风温度',formatter:function(value){return F2C(dealDataValue(value, "temp"));}},
+					{field:'out_air_temp',title:'出风温度',formatter:function(value){return F2C(dealDataValue(value, "temp"));}},
+					{field:'oil_temp',title:'盘管温度',formatter:function(value){return F2C(dealDataValue(value, "temp"));}},
+					{field:'insert_time',title:'时间',formatter:function(value){return formatTime(parseInt(value));}}
+				]
+			});
+    // 查询
+    function search(){
+      $.ajax({
+        type: 'POST',
+        url: reqDomain + "/device/box_data", 
+        data: {
+          "box_id": $('#equi_list').val(),
+          "startTime": $("#startTime").val(),
+          "endTime": $("#endTime").val()
+        },
+        dataType: "json",
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function(data) {
+          if(data.code == 200) {
+            //出风温度
+            var data_out_air_temp = [];
+            //回风温度
+            var data_re_air_temp = [];
+            //温度1
+            var data_gps_temp1 = [];
+            //温度2
+            var data_gps_temp2 = [];
+            //温度3
+            var data_gps_temp3 = [];
+            //湿度
+            var data_gps_humi = [];
+            //环境温度
+            var data_ambient_temp = [];
+            //蒸发器盘管温度
+            var data_oil_temp = [];
+            //电压
+            var data_gps_voltage = [];
+            //日期时间
+            var datatime = [];
+            //设定温度
+            var data_cooler_set_temp = [];
+            for(var i=0;i<data.result.length;i++){
+              data_out_air_temp[i] = F2C(dealDataValue(data.result[i].out_air_temp, 'temp'));
+              data_re_air_temp[i] = F2C(dealDataValue(data.result[i].re_air_temp, 'temp'));
+              data_gps_temp1[i] = dealDataValue(data.result[i].gps_temp1, "temp");
+              data_gps_temp2[i] = dealDataValue(data.result[i].gps_temp2, "temp");
+              data_gps_temp3[i] = dealDataValue(data.result[i].gps_temp3, "temp");
+              data_gps_humi[i] = dealDataValue(data.result[i].gps_humi, "humi");
+              data_ambient_temp[i] = F2C(dealDataValue(data.result[i].ambient_temp, 'ambient_temp'));
+              data_oil_temp[i] = F2C(dealDataValue(data.result[i].oil_temp, 'temp'));
+              data_gps_voltage[i] = dealDataValue(data.result[i].gps_voltage, "voltage");
+              datatime[i] = formatTime(parseInt(data.result[i].insert_time));
+              data_cooler_set_temp[i] = F2C(dealDataValue(data.result[i].cooler_set_temp, 'temp'));
+            }
+            $('#indexTable').bootstrapTable('load', data.result);
+            // 曲线图
+            var myChart = echarts.init(document.getElementById("chart_equi"));
+            option = {
+              title: {
+                text: $('#equi_list option:selected').text() + ':传感器温湿度',
+                x: '2%',
+                y: '10',
+                textStyle: {
+                  color: '#000000',
+                  fontSize: '18'
+                },
+              },
+              tooltip: {
+                trigger: 'axis'
+              },
+              legend: {
+                data: ['湿度', '箱外温度', '箱内中部温度', '箱内后部温度', '设置温度','电压'],
+                right: '4%',
+                top: 15,
+              },
+              grid: {
+                left: '2%',
+                right: '4%',
+                bottom: '6%',
+                containLabel: true
+              },
+              toolbox: {
+                    feature: {
+                        saveAsImage: {}//保存成图片
+                    }
+                },
+              xAxis: {
+                type: 'category',
+                axisLine: {
+                  onZero: false
+                },
+                axisLabel: {
+                  textStyle: {
+                    color: '#000000',
+                    fontSize: '10'
+                  },
+                },
+                axisTick: {
+                  show: false,
+                },
+                boundaryGap: false,
+                splitLine: {
+                  show: true,
+                  lineStyle: {
+                    color: ['#EEEEEE']
+                  }
+                },
+                data: datatime
+              },
+              yAxis: {
+                type: 'value',
+                axisLabel: {
+                  formatter: '{value}',
+                  textStyle: {
+                    color: '#1199D3',
+                    fontSize: '10'
+                  },
+                },
+                axisTick: {
+                  show: false,
+                },				
+                splitLine: {
+                  show: true,
+                  lineStyle: {
+                    color: ['#EEEEEE']
+                  }
+                },
+              },
+              dataZoom: [
+                  {
+                    type: 'inside',
+                    start: 80,
+                    end: 100
+                  },
+                  {
+                    show: true,
+                    type: 'slider',
+                    y: '90%',
+                    start: 50,
+                    end: 100
+                  }
+              ],
+              series: [{
+                  name: '湿度',
+                  type: 'line',
+                  smooth: true,
+                  lineStyle: {
+                    normal: {
+                      width: 3,
+                    }
+                  },
+                  data: data_gps_humi
+                },
+                {
+                  name: '箱外温度',
+                  type: 'line',
+                  smooth: true,
+                  lineStyle: {
+                    normal: {
+                      width: 3,
+                    }
+                  },
+                  data: data_gps_temp1
+                },
+                {
+                  name: '箱内中部温度',
+                  type: 'line',
+                  smooth: true,
+                  lineStyle: {
+                    normal: {
+                      width: 3,
+                    }
+                  },
+                  data: data_gps_temp2
+                },
+                {
+                  name: '箱内后部温度',
+                  type: 'line',
+                  smooth: true,
+                  lineStyle: {
+                    normal: {
+                      width: 3,
+                    }
+                  },
+                  data: data_gps_temp3
+                },
+                {
+                  name: '设置温度',
+                  type: 'line',
+                  smooth: true,
+                  lineStyle: {
+                    normal: {
+                      width: 3,
+                    }
+                  },
+                  data: data_cooler_set_temp
+                },
+                {
+                  name: '电压',
+                  type: 'line',
+                  smooth: true,
+                  lineStyle: {
+                    normal: {
+                      width: 3,
+                    }
+                  },
+                  data: data_gps_voltage
+                }
+              ]
+            };
+            if(option && typeof option === "object") {
+              myChart.setOption(option, true);
+            }
+            window.addEventListener('resize',function(){
+              myChart.resize();
+            })
+          } else if(data.code == 401) {
+            window.location.href = "../login.html";
+          } else if(data.code == 400) {
+            alert(data.reason);
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

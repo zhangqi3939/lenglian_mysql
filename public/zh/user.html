@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <link rel="shortcut icon" href="../img/icon/lenglian.ico">
+  <link rel="stylesheet" href="../css/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/bootstrap-table.css">
+  <link rel="stylesheet" href="../font-awesome/css/font-awesome.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="../publicJS/jquery-2.1.0.js"></script>
+  <script src="../publicJS/bootstrap.min.js"></script>
+  <script src="../publicJS/bootstrap-table.js"></script>
+  <script src="../publicJS/reqDomain.js"></script>
+  <script src="../plugs/layer/layer.js"></script>
+  <script src="js/function.js"></script>
+  <script src="js/assembly.js"></script>
+  <style>
+    /* 页面效果 */
+    #main{background: white;}
+    .indexTable{position: relative;margin-top: 20px;}
+    .indexTable .columns.columns-right.btn-group.pull-right{position: absolute;top: -67px;right: 0;}
+    .indexTable table th{height: 24px;background-color: #1199D3;}
+    .indexTable table th .th-inner{padding: 0;color: white;font-size: 14px;text-align: center;}
+    .indexTable table td{font-size: 14px;padding: 0!important;text-align: center;}
+    .indexTable table tr{cursor: pointer;}
+    .indexTable table tr.bg td{background-color: #BBBBBB;}
+    /* 弹框效果 */
+    .mask>div{width: 800px;height: 360px;position: absolute;top: 50%;left: 50%;margin: -180px 0 0 -400px;background-color: #fff;overflow: hidden;border: 1px solid #45C5F8;border-radius: 10px;}
+    .mask_table{width: 370px;margin: 20px auto;}
+    .mask_table td{text-align: right;font-size: 14px;}
+    .mask_table td .form-control{border: 1px solid #D9D9D9;padding: 2px 8px;margin: 5px 0 5px 20px;width: 200px;resize: none;}
+    .mask_table td input,.mask_table td select{height: 25px;}
+    
+  </style>
+</head>
+<body>
+  <div id="header"></div>
+  <div id="manageNav"></div>
+  <div id="main">
+    <!-- 面包屑 -->
+    <div id="sidebar">
+      <img src="../img/nac.png" />
+      <!-- <a href="home.html">首页</a>> -->
+      <a href="javascript:void(0)">用户</a>>
+      <a href="javascript:void(0)">用户列表</a>
+    </div>
+     <!-- 操作组 -->
+     <div id="operationGroup">
+      <span class="op_btn" onclick="addUser()">添加</span>
+      <span class="op_btn" onclick="changeUser()">修改</span>
+      <span class="op_btn" onclick="deleteUser()">删除</span>	
+    </div>
+    <!-- 表格 -->
+    <div class="indexTable">
+      <table id="indexTable" data-toggle="table"></table>
+    </div>
+     <!-- 弹框 -->
+     <div class="mask"></div>
+  </div>
+  <script>
+    $(function(){
+      // 页面初始化
+      pageInit();
+      // 初始化头部
+      new Header('#header');
+      // 初始化管理导航
+      new ManageNav('#manageNav',1);
+      // 获取用户列表
+      userList();
+    })
+  </script>
+  <script>
+    var tableRow = null;
+    // 页面初始化
+    function pageInit(){
+      tableRow = null;
+    }
+    // 用户列表
+    function userList(){
+      $.ajax({
+        type: "POST",
+        url: reqDomain + "/dept/user_listing",
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function (data) {
+          if(data.code == '200'){
+            $("#indexTable").bootstrapTable('load',data.result)
+          }else if(data.code == '400'){
+            layer.alert(data.reason);
+          }else if(data.code == '401'){
+            window.location.href = 'login.html';
+          }
+        }
+      });
+    }
+    $("#indexTable").bootstrapTable({
+      sidePagination: "client",
+      showExport: true,
+      exportDataType: 'all',
+      clickToSelect: true,
+      align:'center',
+      columns: [{
+        title: '序号',
+        formatter: function(value, row, index) {
+          return index + 1;
+        }
+      }, {
+        field: 'user_name',
+        title: '登录名'
+      }, {
+        field: 'real_name',
+        title: '姓名'
+      }, {
+        field: 'gender',
+        title: '性别'
+      }, {
+        field: 'tel',
+        title: '电话'
+      }, {
+        field: 'email',
+        title: '邮箱'
+      },{
+        field: 'user_type',
+        title: '用户类型',
+        formatter: function(value){
+          switch(value){
+            case 'super':
+              return '超级管理员';
+              break;
+            case 'admin':
+              return '监控管理员';
+              break;
+            case 'common':
+              return '监控员';
+              break;
+          }
+        }
+      },{
+        field: 'id',
+        title: 'id',
+        visible: false
+      }]
+    });
+    $('#indexTable').on('click-row.bs.table',function(e,row,element){
+      $(element).addClass('bg').siblings().removeClass('bg');
+      tableRow = row;
+    })
+    // 添加用户
+    function addUser(){
+      $('.mask').show();
+      new AddUser();
+    }
+    function AddUser(){
+      this.init();
+    }
+    AddUser.prototype.init = function(){
+      var div = document.createElement('div');
+      var str = '<div class="mask_title">添加用户<span class="close" onclick="closeMask()">×</span></div>';
+      str += '<div class="mask_main"><table class="mask_table"><tr><td>登录名</td><td><input type="text" class="form-control" id="userName"></td></tr>';
+      str += '<tr><td>姓名</td><td><input type="text" class="form-control" id="realName"></td></tr>';
+      str += '<tr><td>密码</td><td><input type="text" class="form-control" id="userPassword"></td></tr>';
+      str += '<tr><td>电话</td><td><input type="text" class="form-control" id="tel"></td></tr>';
+      str += '<tr><td>邮箱</td><td><input type="text" class="form-control" id="email"></td></tr>';
+      str += '<tr><td>性别</td><td><select class="form-control" id="gender"><option value="男">男</option><option value="女">女</option></select></td></tr>';
+      str += '<tr><td>用户类型</td><td><select class="form-control" id="userType"><option value="super">超级管理员</option><option value="admin">监控管理员</option><option value="common">监控员</option></select></td></tr></table>';
+      str += '<div class="myform_button"><button type="button" class="btn btn-info" onclick="userAdd()">保存</button> </div></div>';  
+      div.innerHTML = str;
+      document.getElementsByClassName('mask')[0].appendChild(div);    
+    }
+    // 用户添加保存
+    function userAdd(){
+      if($('#userName').val() == '' || $('#realName').val() == ''){
+        layer.alert('登录名和姓名不能为空！');
+        return false;
+      }
+      $.ajax({
+        type: "POST",
+        url: reqDomain + "/dept/user_save",
+        data:{
+          userName: $('#userName').val(),
+          realName: $('#realName').val(),
+          userPassword: $('#userPassword').val(),
+          tel: $('#tel').val(),
+          email: $('#email').val(),
+          gender: $('#gender').val(),
+          userType: $('#userType').val()
+        },
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function (data) {
+          if(data.code == '200'){
+            layer.alert('用户添加成功！');
+            closeMask();
+            userList();
+            tableRow = null;
+          }else if(data.code == '400'){
+            layer.alert(data.reason);
+          }else if(data.code == '401'){
+            window.location.href = 'login.html';
+          }
+        }
+      })
+    }
+    // 修改用户
+    function changeUser(){
+      if(tableRow == null){
+        layer.alert('请选择一个用户！');
+        return false;
+      }
+      $('.mask').show();
+      new ChangeUser();
+    }
+    function ChangeUser(){
+      this.init();
+    }
+    ChangeUser.prototype.init = function(){
+      var div = document.createElement('div');
+      var str = '<div class="mask_title">修改用户<span class="close" onclick="closeMask()">×</span></div>';
+      str += '<div class="mask_main"><table class="mask_table"><tr><td>登录名</td><td><input type="text" class="form-control" id="userName"></td></tr>';
+      str += '<tr><td>姓名</td><td><input type="text" class="form-control" id="realName"></td></tr>';
+      str += '<tr><td>密码</td><td><input type="text" class="form-control" id="userPassword"></td></tr>';
+      str += '<tr><td>电话</td><td><input type="text" class="form-control" id="tel"></td></tr>';
+      str += '<tr><td>邮箱</td><td><input type="text" class="form-control" id="email"></td></tr>';
+      str += '<tr><td>性别</td><td><select class="form-control" id="gender"><option value="男">男</option><option value="女">女</option></select></td></tr>';
+      str += '<tr><td>用户类型</td><td><select class="form-control" id="userType"><option value="super">超级管理员</option><option value="admin">监控管理员</option><option value="common">监控员</option></select></td></tr></table>';
+      str += '<div class="myform_button"><button type="button" class="btn btn-info" onclick="userChange()">保存</button> </div></div>';  
+      div.innerHTML = str;
+      document.getElementsByClassName('mask')[0].appendChild(div);
+      $('#userName').val(tableRow.user_name);
+      $('#realName').val(tableRow.real_name);
+      $('#tel').val(tableRow.tel);
+      $('#email').val(tableRow.email);
+      $('#gender').val(tableRow.gender);
+      $('#userType').val(tableRow.user_type);
+    }
+    // 用户修改保存
+    function userChange(){
+      if($('#userName').val() == '' || $('#realName').val() == ''){
+        layer.alert('登录名和姓名不能为空！');
+        return false;
+      }
+      $.ajax({
+        type: "POST",
+        url: reqDomain + "/dept/user_save",
+        data:{
+          id: tableRow.id,
+          userName: $('#userName').val(),
+          realName: $('#realName').val(),
+          userPassword: $('#userPassword').val(),
+          tel: $('#tel').val(),
+          email: $('#email').val(),
+          gender: $('#gender').val(),
+          userType: $('#userType').val()
+        },
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function (data) {
+          if(data.code == '200'){
+            layer.alert('用户修改成功！');
+            closeMask();
+            userList();
+            tableRow = null;
+          }else if(data.code == '400'){
+            layer.alert(data.reason);
+          }else if(data.code == '401'){
+            window.location.href = 'login.html';
+          }
+        }
+      })
+    }
+    // 删除用户
+    function deleteUser(){
+      if(tableRow == null){
+        layer.alert('请选择一个用户！');
+        return false;
+      }
+      layer.confirm('确定要删除该用户么？',function(){
+        $.ajax({
+          type: "POST",
+          url: reqDomain + "/dept/user_delete",
+          data:{
+            id: tableRow.id,
+          },
+          xhrFields: {
+            withCredentials: true
+          },
+          success: function (data) {
+            if(data.code == '200'){
+              layer.alert('用户删除成功！');
+              userList();
+              tableRow = null;
+            }else if(data.code == '400'){
+              layer.alert(data.reason);
+            }else if(data.code == '401'){
+              window.location.href = 'login.html';
+            }
+          }
+        })
+      })
+    }
+    // 点击叉号
+    function closeMask(){
+      $('.mask').fadeOut(300);
+      $('.mask>div').remove();
+    }
+ </script>
+</body>
+</html> 
