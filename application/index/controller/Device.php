@@ -14,14 +14,8 @@ class Device extends Controller
         $channel = 'web';
         $user_info = $User->checkToken($channel);
         $user = $User->userList(array('ID'=>$user_info['ID']));
-//        var_dump($user);
-        // $user = $this->api->checkUser();
         $rights = checkRights('');
-//        $user = input('post.keyword');
-//        var_dump($user);
         app_send(arraykeyToLower($Device->getGroupList($user)));
-//        $user->keyword =$this->input->post('keyword');
-//        app_send($this->api->getGroupList($user));
     }
     //首页->状态信息
     public function box_info()

@@ -8,46 +8,39 @@ class DeviceModel extends Model
     public function getBoxLatest($params)
     {
         $where = ' 1=1 ';
-        if($params['USER_LEVEL'] == 2){//管理员
-
-        }elseif($params['USER_LEVEL'] == 1){//agent代理商
-            //$param['C.AGENT_ID'] = $params['AGENT_ID'];
-            $where .= " and C.AGENT_ID = ".$params['AGENT_ID'];
-           // $this->db->where('c.agentID',$params->agentID);
-        }elseif($params['USER_LEVEL'] == 0) {
-//            $param['C.AGENT_ID'] = $params['AGENT_ID'];
-//            $param['C.CLIENT_ID'] = $params['CLIENT_ID'];
-            $where .= " and C.AGENT_ID = ".$params['AGENT_ID']." and C.CLIENT_ID = ".$params['CLIENT_ID'];
-        }
         if(!empty($params['groupID'])){
-           // $where .= " and c.groupID = ".$params->groupID;
-            //$param['C.GROUP_ID'] = $params['groupID'];
             $where .= " and C.GROUP_ID = ".$params['boxGroupID'];
         }
         if(!empty($params['keyword'])){
-           // $param['C.NAME']= " like '%".$params['keyword']."%'";
             $where .= " and (C.NAME like '%".$params['keyword']."%')";
         }
         empty($params['box_category']) && $params['box_category'] = '01';
         //角色
-        if(!empty($params['ROLE_ID'])){
-            $group_id = Db::name('rbac_role_group_relation')->field('GROUP_ID')->where('ROLE_ID',$params['ROLE_ID'])->find();
-            $group_id = explode(',',$group_id['GROUP_ID']);
-            $box_id = Db::name('container')->field('BOX_ID')->where('GROUP_ID','in',$group_id)->select();
-            $box_id = array_column($box_id,'BOX_ID');
-            $box_id = implode(",", $box_id);
-            if(!empty($box_id)){
-                $where .= " and (C.BOX_ID in ($box_id))";
-                $where .= " and C.CATEGORY = ".$params['box_category'];
-            }else{
-                //给个不存在的条件让设备不显示
-                $params['box_category'] = 000;
-                $where .= " and C.CATEGORY = ".$params['box_category'];
-            }
+        if($params['ROLE_ID'] == '500'){
 
+        }else{
+            if(!empty($params['ROLE_ID'])){
+                $group_id = Db::name('rbac_role_group_relation')->field('GROUP_ID')->where('ROLE_ID',$params['ROLE_ID'])->find();
+                $group_id = explode(',',$group_id['GROUP_ID']);
+                $box_id = Db::name('container')->field('BOX_ID')->where('GROUP_ID','in',$group_id)->select();
+                $box_id = array_column($box_id,'BOX_ID');
+                $box_id = implode(",", $box_id);
+                if(!empty($box_id)){
+                    $where .= " and (C.BOX_ID in ($box_id))";
+                    $where .= " and C.CATEGORY = ".$params['box_category'];
+                }else{
+                    //给个不存在的条件让设备不显示
+                    $params['box_category'] = 000;
+                    $where .= " and C.CATEGORY = ".$params['box_category'];
+                }
+            }else{
+                $box_id = '0000';
+                $where .= " and (C.BOX_ID in ($box_id))";
+            }
         }
+
         //$param['C.CATEGORY'] = $params['box_category'];
-        $order = ' order by D.INSERT_TIME desc';
+        $order = 'D.INSERT_TIME desc';
         $result = Db('data_latest')
                 ->alias('D')
                 ->join('container C','D.BOX_ID = C.BOX_ID','left')
@@ -65,11 +58,10 @@ class DeviceModel extends Model
                 $row['alarm'] = $row['ZONE_ALARM_CODE'] == 0 ? 0 : 1;
             }
         }
-
         return $result;
     }
     //分组列表
-    function getGroupList($params){
+    public function getGroupList($params){
         $where = '1=1 ';
         if(!empty($params['keyword'])){
             $where .= " and (G.NAME like '%".$params['keyword']."%')";
@@ -77,14 +69,19 @@ class DeviceModel extends Model
         $role_id = Db::name('rbac_user_role_relation')->field('ROLE_ID')->where('USER_ID',$params['ID'])->find();
         if(!empty($role_id)){
             $group_id = Db::name('rbac_role_group_relation')->field('GROUP_ID')->where('ROLE_ID',$role_id['ROLE_ID'])->find();
-            if(!empty($group_id)){
-                $group_id = explode(',',$group_id['GROUP_ID']);
-                $group_id = implode(",", $group_id);
+            if($role_id["ROLE_ID"] == '500'){
+
             }else{
-                //定义一个不存在的分组id
-                $group_id = 0000;
+                if(!empty($group_id)){
+                    $group_id = explode(',',$group_id['GROUP_ID']);
+                    $group_id = implode(",", $group_id);
+                }else{
+                    //定义一个不存在的分组id
+                    $group_id = 0000;
+                }
+                $where .= " and (G.ID in ($group_id))";
             }
-            $where .= " and (G.ID in ($group_id))";
+
         }else{
             $group_id = 0000;
             $where .= " and (G.ID in ($group_id))";
@@ -105,60 +102,78 @@ class DeviceModel extends Model
             $where .= " and (NAME like '%" . $params['keyword'] . "%' or BOX_ID like '%" . $params['keyword'] . "%')";
         }
         //该设备未在任何分组(定义超级管理员才可以看所有)
-        if($params['ROLE_ID'] == 500){
-            if(empty(input('post.groupID'))){
-                $group_id = '0,-1';
-                $box_noexit = Db::name('container')->field('ID')->where('GROUP_ID','in', $group_id)->select();
-                $ID =   $box_id = array_column($box_noexit,'ID');
+        if($params['ROLE_ID'] == '500'){
+            if(!empty(input('post.groupID'))){
+                $group_id = input('post.groupID');
+                $box_id = Db::name('container')->field('ID')->where('GROUP_ID','=',$group_id)->select();
+                if(!empty($box_id)){
+                    $ID = array_column($box_id,'ID');
+                    $ID = implode(",",$ID);
+                }else{
+                    $ID = '0000';
+                }
+                $where .= " and (ID in ($ID))";
+            }else{
+                $box_id = Db::name('container')->field('ID')->select();
+                $ID = array_column($box_id,'ID');
                 $ID = implode(",", $ID);
                 $where .= " and (ID in ($ID))";
-            }else{
-
             }
         }else{
-            if(empty(input('post.groupID'))) {
-                if (!empty($params['ROLE_ID'])) {
-                    $group_id = Db::name('rbac_role_group_relation')->field('GROUP_ID')->where('ROLE_ID', $params['ROLE_ID'])->find();
-                    if ($group_id == "") {
-                        //定义一个不存在的id
-                        $ID = '0000';
-                        $where .= " and (ID in ($ID))";
-                    } else {
-                        $group_id = explode(',', $group_id['GROUP_ID']);
-                        $box_id = Db::name('container')->field('ID')->where('GROUP_ID', 'in', $group_id)->select();
-                        $ID = array_column($box_id, 'ID');
-                        $ID = implode(",", $ID);
-                        $where .= " and (ID in ($ID))";
-                    }
-                }
-            }else if(empty(input('post.groupID'))){
-                $ID = '0000';
+            if(!empty(input('post.groupID'))){
+                $group_id = input('post.groupID');
+                $box_id = Db::name('container')->field('ID')->where('GROUP_ID','in',$group_id)->select();
+                $ID = array_column($box_id,'ID');
+                $ID = implode(",",$ID);
                 $where .= " and (ID in ($ID))";
             }else{
-                //分组(内部的的设备)
-                if(!empty($params['boxGroupID']) && $params['boxGroupID'] >0 ){
-                    $where .= " and GROUP_ID = ".$params['boxGroupID'];
-                    $box_noexit = Db::name('container')->field('ID')->where('GROUP_ID','in', $params['boxGroupID'])->select();
-                    if(!empty($box_noexit)){
-                        $ID = array_column($box_noexit,'ID');
-                        $ID = implode(",", $ID);
-                        $where .= " and (ID in ($ID))";
-                    }else{
-                        $ID = '000';
-                        $where .= " and (ID in ($ID))";
-                    }
+                $group_id = Db::name('rbac_role_group_relation')->field('GROUP_ID')->where('ROLE_ID', $params['ROLE_ID'])->find();
+                if(is_array($group_id)){
+                    $group_id = implode(",",$group_id);
                 }else{
-                    if(!empty($ID)){
-                        $where .= " and (ID in ($ID))";
-                    }else{
-                        //给个不存在的条件让设备不显示
-                        $ID = '000';
-                        $where .= " and (ID in ($ID))";
-                    }
+                    //定义一个不存在的group_id
+                    $group_id = "0000";
                 }
+                $box_id = Db::name('container')->field('ID')->where('GROUP_ID','in',$group_id)->select();
+                $ID = array_column($box_id,'ID');
+                $ID = implode(",",$ID);
+                $where .= " and (ID in ($ID))";
             }
         }
-        //$select = 'G.NAME as GROUPNAME,A.AGENT_ID,A.CLIENT_ID,A.BRANCH_ID,A.GROUP_ID,A.NAME,A.MODEL_NUMBER,A.CATEGORY,A.BOX_ID,A.BOX_CATEGORY,A.COOLER_CODE,A.COOLER_VERSION,A.BOX_UP_TIME,A.IBOX_VERSION,A.ADD_TIME,A.ALARM_PHONE,A.DEVICE_SETTING,A.ALARM_SETTING,A.OUT_DATE,A.BOX_PARM';
+        //监控管理员，按工位查询分组设备[查询该登录用户是否被分配工位]
+        $User = new UserModel();
+        $channel = 'web';
+        $User_info = $User->checkToken($channel);
+        $station = Db::name('schedule')->where('USER_ID',$User_info['ID'])->select();
+        if(!empty($station)){
+            $data = array();
+            foreach($station as $row){
+                $start_time = $row['START_TIME'];
+                $end_time = $row['END_TIME'];
+                $now_time = time();
+                //判断当前时间该用户有没有排班情况
+                if($now_time >= $start_time && $now_time <= $end_time){
+                    $data['where'] =  "$now_time between ".$start_time." and ".$end_time."";
+                }else{
+                    $data['where'] = "$now_time = 000";
+                }
+            }
+            $station_info = Db::name('schedule')->where($data['where'])->find();
+            if(!empty($station_info)){
+                $station_id = $station_info['STATION_ID'];
+                $group_info = Db::name('group')->where('STATION_ID',$station_id)->select();
+                //取出我所可以管理的分组id
+                foreach($group_info as $row){
+                    $group_id[] = $row['ID'];
+                }
+                $group_id = array_unique($group_id);
+                $group_id = implode(",",$group_id);
+                $where .= " and (ID in ($group_id))";
+            }else{
+                $ID = '000';
+                $where .= " and (ID in ($ID))";
+            }
+        }
         $select = 'AGENT_ID,CLIENT_ID,BRANCH_ID,GROUP_ID,NAME,MODEL_NUMBER,CATEGORY,BOX_ID,BOX_CATEGORY,COOLER_CODE,COOLER_VERSION,BOX_UP_TIME,IBOX_VERSION,ADD_TIME,ALARM_PHONE,DEVICE_SETTING,ALARM_SETTING,OUT_DATE,BOX_PARAM';
         $containerTable = 'zj_container';
         $sql = "select $select from $containerTable $where ";
@@ -166,19 +181,6 @@ class DeviceModel extends Model
         if(!empty($params['boxTravelID']) && $params['boxTravelID'] > 0){
             $sql .= " and  BOX_ID in(select BOX_ID from zj_travel_to_box where TRAVEL_ID = ".$params['boxTravelID'].")";
         }
-        //var_dump($params);
-        //监控管理员，按工位查询分组设备
-        /*if($params['IS_ADMIN'] == 1 && $params['IS_SUPER'] < 1){
-            $station_id = $this->session->station_id;
-            //$sql .= " and groupID in (select id from zj_group where station_id = $station_id)";
-        }*/
-//        $result = Db('container')
-//                ->alias('A')
-//                ->join('group G','G.ID = A.GROUP_ID','left')
-//                ->where($where)
-//                ->field('G.NAME as GROUPNAME,A.AGENT_ID,A.CLIENT_ID,A.BRANCH_ID,A.GROUP_ID,A.NAME,A.MODEL_NUMBER,A.CATEGORY,A.BOX_ID,A.BOX_CATEGORY,A.COOLER_CODE,A.COOLER_VERSION,A.BOX_UP_TIME,A.IBOX_VERSION,A.ADD_TIME,A.ALARM_PHONE,A.DEVICE_SETTING,A.ALARM_SETTING,A.OUT_DATE,A.BOX_PARM')
-//                ->select();
-
         if(empty($params['perPage'])){//不分页
             $sql .= ' order by NAME';
             //$total =count($Model->query($sql));
@@ -187,7 +189,7 @@ class DeviceModel extends Model
             return $dataList;
         }else{//分页
             (empty($params['page']) || $params['page'] < 1) && $params['page'] = 1;
-            $total =count($Model->query($sql));
+            $total = count($Model->query($sql));
             $offset = ($params['page'] - 1) * $params['perPage'];
             $limit = $params['perPage'];
             $sql .= " limit $offset,$limit";
@@ -196,7 +198,7 @@ class DeviceModel extends Model
         }
     }
     //更新分组设备数量
-    function updateGroupDeviceNum($groupID){
+    public function updateGroupDeviceNum($groupID){
         $groupTable = 'zj_group';
         $boxTable = 'zj_container';
         $Model = new DeviceModel();
@@ -204,7 +206,7 @@ class DeviceModel extends Model
         $Model->execute($sql);
     }
     //删除分组
-    function groupDelete($groupID,$uid){
+    public function groupDelete($groupID,$uid){
         Db::name('container')->where('GROUP_ID',$groupID)->update(array('GROUP_ID'=>0));
        $result =  Db::name('group')->where('ID',$groupID)->delete();
        if(!$result){
@@ -217,7 +219,7 @@ class DeviceModel extends Model
 
     }
     //设备历史数据
-    function getBoxData($box_id,$startTime,$endTime,$select='',$forceValid=0,$order_by='INSERT_TIME desc'){
+    public function getBoxData($box_id,$startTime,$endTime,$select='',$forceValid=0,$order_by='INSERT_TIME desc'){
         empty($select) && $select ="*";
         //未指定起止时间，返回最新100条数据
         if($startTime <=0 && $endTime <=0){
@@ -260,7 +262,7 @@ class DeviceModel extends Model
             ->find();
         return $result;
     }
-    function getBoxData_page($box_id,$startTime,$endTime,$page=1,$perPage=10,$select,$forceValid=0,$order_by='INSERT_TIME desc'){
+    public function getBoxData_page($box_id,$startTime,$endTime,$page=1,$perPage=10,$select,$forceValid=0,$order_by='INSERT_TIME desc'){
         $page = $page > 1 ? $page : 1;
         $offset = empty($perPage) ? 10 : $perPage;
         $perPage = ($page - 1) * $offset + 1;
